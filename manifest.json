@@ -1,0 +1,15 @@
+{
+  "name": "My Calendar",
+  "short_name": "My Calendar",
+  "description": "A quiet year calendar — plan the year, one month at a time.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#131419",
+  "theme_color": "#131419",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

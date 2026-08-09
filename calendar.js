@@ -23,6 +23,8 @@
   let view = { year: today.getFullYear(), month: today.getMonth() }; // 0-based month
   let navDir = 'none';   // 'next' | 'prev' | 'none' — drives the grid slide direction
   let firstLoad = true;  // stagger the cells once, on the very first render
+  let sheetDate = null;  // the day currently shown in the mobile day sheet
+  const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
 
   /* ---- date helpers ---- */
   const pad = n => String(n).padStart(2, '0');
@@ -92,7 +94,8 @@
       const cell = document.createElement('div');
       cell.className = 'cell' + (c.dim ? ' dim' : '') + (dateStr === todayStr ? ' today' : '')
         + (wd === 5 || wd === 6 ? ' weekend' : '');
-      cell.onclick = () => openModal({ event_date: dateStr });
+      // Mobile cells are tiny → tap opens a readable day sheet; desktop opens the editor.
+      cell.onclick = () => isMobile() ? openDaySheet(dateStr) : openModal({ event_date: dateStr });
       if (firstLoad) cell.style.animationDelay = Math.min(idx * 7, 280) + 'ms';
 
       const num = document.createElement('div');
@@ -100,30 +103,50 @@
       num.textContent = c.day;
       cell.appendChild(num);
 
-      const evWrap = document.createElement('div');
-      evWrap.className = 'cell-events';
-      Store.forDay(dateStr).forEach(ev => {
-        const pill = document.createElement('div');
-        pill.className = 'pill' + (ev.done ? ' done' : '');
-        if (ev.color) { pill.style.borderLeftColor = ev.color; pill.style.background = ev.color + '2b'; }
+      const dayEvents = Store.forDay(dateStr);
+      if (isMobile()) {
+        // Compact coloured dots — the day sheet carries the readable detail.
+        const dots = document.createElement('div');
+        dots.className = 'dots';
+        dayEvents.slice(0, 5).forEach(ev => {
+          const d = document.createElement('span');
+          d.className = 'dot' + (ev.done ? ' done' : '');
+          if (ev.color) d.style.background = ev.color;
+          dots.appendChild(d);
+        });
+        if (dayEvents.length > 5) {
+          const more = document.createElement('span');
+          more.className = 'more';
+          more.textContent = '+' + (dayEvents.length - 5);
+          dots.appendChild(more);
+        }
+        cell.appendChild(dots);
+      } else {
+        const evWrap = document.createElement('div');
+        evWrap.className = 'cell-events';
+        dayEvents.forEach(ev => {
+          const pill = document.createElement('div');
+          pill.className = 'pill' + (ev.done ? ' done' : '');
+          if (ev.color) { pill.style.borderLeftColor = ev.color; pill.style.background = ev.color + '2b'; }
 
-        const check = document.createElement('button');
-        check.className = 'pill-check';
-        check.setAttribute('aria-label', ev.done ? 'Mark not done' : 'Mark done');
-        check.innerHTML = ev.done ? '✓' : '';
-        check.onclick = (e) => { e.stopPropagation(); Store.update(ev.id, { done: !ev.done }); };
+          const check = document.createElement('button');
+          check.className = 'pill-check';
+          check.setAttribute('aria-label', ev.done ? 'Mark not done' : 'Mark done');
+          check.innerHTML = ev.done ? '✓' : '';
+          check.onclick = (e) => { e.stopPropagation(); Store.update(ev.id, { done: !ev.done }); };
 
-        const label = document.createElement('button');
-        label.className = 'pill-title';
-        label.innerHTML = `${escapeHtml(ev.title)}` +
-          (ev.category ? `<span class="cat">${escapeHtml(ev.category)}</span>` : '');
-        label.title = (ev.notes ? ev.notes + '\n' : '') + (ev.added_by === 'claude' ? '· added by Claude' : '');
-        label.onclick = (e) => { e.stopPropagation(); openModal(ev); };
+          const label = document.createElement('button');
+          label.className = 'pill-title';
+          label.innerHTML = `${escapeHtml(ev.title)}` +
+            (ev.category ? `<span class="cat">${escapeHtml(ev.category)}</span>` : '');
+          label.title = (ev.notes ? ev.notes + '\n' : '') + (ev.added_by === 'claude' ? '· added by Claude' : '');
+          label.onclick = (e) => { e.stopPropagation(); openModal(ev); };
 
-        pill.append(check, label);
-        evWrap.appendChild(pill);
-      });
-      cell.appendChild(evWrap);
+          pill.append(check, label);
+          evWrap.appendChild(pill);
+        });
+        cell.appendChild(evWrap);
+      }
       grid.appendChild(cell);
     });
 
@@ -174,6 +197,57 @@
   }
   function closeModal() { $('modal').classList.remove('open'); }
 
+  /* ---- day sheet (mobile) — a readable list of one day's events ---- */
+  function openDaySheet(dateStr) {
+    sheetDate = dateStr;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    $('sheet-date').textContent = new Date(y, m - 1, d)
+      .toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    renderSheet();
+    $('daysheet').classList.add('open');
+  }
+  function renderSheet() {
+    const wrap = $('sheet-events');
+    wrap.innerHTML = '';
+    const evs = Store.forDay(sheetDate);
+    if (!evs.length) {
+      const empty = document.createElement('div');
+      empty.className = 'sheet-empty';
+      empty.textContent = 'Nothing planned. Add an event below.';
+      wrap.appendChild(empty);
+      return;
+    }
+    evs.forEach(ev => {
+      const row = document.createElement('div');
+      row.className = 'sheet-ev' + (ev.done ? ' done' : '');
+      if (ev.color) row.style.borderLeftColor = ev.color;
+
+      const check = document.createElement('button');
+      check.className = 'sheet-ev-check';
+      check.setAttribute('aria-label', ev.done ? 'Mark not done' : 'Mark done');
+      check.innerHTML = ev.done ? '✓' : '';
+      check.onclick = (e) => { e.stopPropagation(); Store.update(ev.id, { done: !ev.done }); };
+
+      const body = document.createElement('button');
+      body.className = 'sheet-ev-body';
+      body.innerHTML = `<div class="sheet-ev-title">${escapeHtml(ev.title)}</div>`
+        + (ev.category ? `<span class="sheet-ev-cat">${escapeHtml(ev.category)}</span>` : '')
+        + (ev.notes ? `<div class="sheet-ev-notes">${escapeHtml(ev.notes)}</div>` : '')
+        + (ev.added_by === 'claude' ? `<div class="sheet-ev-notes">· added by Claude</div>` : '');
+      body.onclick = () => { closeSheet(); openModal(ev); };
+
+      const edit = document.createElement('button');
+      edit.className = 'sheet-ev-edit';
+      edit.setAttribute('aria-label', 'Edit');
+      edit.textContent = '›';
+      edit.onclick = () => { closeSheet(); openModal(ev); };
+
+      row.append(check, body, edit);
+      wrap.appendChild(row);
+    });
+  }
+  function closeSheet() { $('daysheet').classList.remove('open'); sheetDate = null; }
+
   async function saveEvent(e) {
     e.preventDefault();
     const id = $('event-id').value;
@@ -218,26 +292,65 @@
     $('event-form').onsubmit = saveEvent;
     $('event-delete').onclick = deleteEvent;
     $('event-notes').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEvent(e); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeSheet(); } });
     $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+    // Day sheet
+    $('sheet-close').onclick = closeSheet;
+    $('sheet-add').onclick = () => { const d = sheetDate; closeSheet(); openModal({ event_date: d }); };
+    $('daysheet').addEventListener('click', e => { if (e.target.id === 'daysheet') closeSheet(); });
+    // Re-render when crossing the mobile/desktop breakpoint (dots ↔ pills).
+    let lastMobile = isMobile();
+    window.addEventListener('resize', () => {
+      if (isMobile() !== lastMobile) { lastMobile = isMobile(); renderAll(); }
+    });
   }
 
-  /* ---- auth gate (supabase mode only) ---- */
+  // One place the UI refreshes from — grid, and the day sheet if it's open.
+  function refresh() { renderAll(); if ($('daysheet').classList.contains('open')) renderSheet(); }
+
+  /* ---- auth gate (supabase mode) — email → 6-digit code ---- */
   async function gate() {
     if (!Store.auth.enabled) return true;         // local mode → straight in
     const session = await Store.auth.session();
     if (session && session.user) return true;
-    // show login overlay
+
     $('auth').classList.add('open');
     $('signout-btn').classList.remove('hidden');
-    $('auth-form').onsubmit = async (e) => {
+    const emailForm = $('auth-form'), codeForm = $('code-form');
+    let email = '';
+
+    emailForm.onsubmit = async (e) => {
       e.preventDefault();
-      const email = $('auth-email').value.trim();
+      email = $('auth-email').value.trim();
+      const btn = $('auth-send'); btn.disabled = true;
       $('auth-msg').textContent = 'Sending…';
-      const { error } = await Store.auth.sendMagicLink(email);
-      $('auth-msg').textContent = error ? ('Error: ' + error.message)
-                                        : 'Check your inbox for the sign-in link.';
+      const { error } = await Store.auth.sendCode(email);
+      btn.disabled = false;
+      if (error) { $('auth-msg').textContent = 'Error: ' + error.message; return; }
+      $('code-email').textContent = email;
+      emailForm.classList.add('hidden');
+      codeForm.classList.remove('hidden');
+      $('auth-msg').textContent = '';
+      setTimeout(() => $('auth-code').focus(), 60);
     };
+
+    codeForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const token = $('auth-code').value.trim();
+      const btn = $('auth-verify'); btn.disabled = true;
+      $('auth-msg').textContent = 'Verifying…';
+      const { error } = await Store.auth.verifyCode(email, token);
+      btn.disabled = false;
+      if (error) { $('auth-msg').textContent = 'That code didn’t work. Check it and try again.'; return; }
+      location.reload();   // session persisted → gate passes on reload
+    };
+
+    $('code-back').onclick = () => {
+      codeForm.classList.add('hidden');
+      emailForm.classList.remove('hidden');
+      $('auth-msg').textContent = '';
+    };
+
     Store.auth.onChange(s => { if (s && s.user) location.reload(); });
     return false;
   }
@@ -255,7 +368,7 @@
     const ok = await gate();
     if (!ok) return;
     await Store.init();
-    Store.onChange(renderAll);
+    Store.onChange(refresh);
     renderAll();
   }
 

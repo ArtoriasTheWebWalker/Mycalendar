@@ -2,40 +2,60 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>My Calendar</title>
+  <meta name="theme-color" content="#131419" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="My Calendar" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Login overlay (only shown in Supabase mode when signed out) -->
+  <!-- Sign-in overlay (Supabase mode, signed out). Two steps: email → 6-digit code. -->
   <div id="auth" class="auth">
     <div class="auth-card">
+      <div class="auth-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/>
+        </svg>
+      </div>
       <h1>My Calendar</h1>
-      <p class="muted">Sign in with a magic link. Enter your email and check your inbox.</p>
-      <form id="auth-form">
-        <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email" required />
-        <button type="submit">Send magic link</button>
+
+      <form id="auth-form" class="auth-step">
+        <p class="auth-lead">Enter your email and we’ll send a 6-digit sign-in code.</p>
+        <input id="auth-email" type="email" inputmode="email" placeholder="you@example.com" autocomplete="email" required />
+        <button type="submit" class="primary-btn auth-btn" id="auth-send">Send code</button>
       </form>
+
+      <form id="code-form" class="auth-step hidden">
+        <p class="auth-lead">Enter the 6-digit code sent to <span id="code-email" class="code-email"></span>.</p>
+        <input id="auth-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" />
+        <button type="submit" class="primary-btn auth-btn" id="auth-verify">Verify &amp; sign in</button>
+        <button type="button" class="link-btn" id="code-back">Use a different email</button>
+      </form>
+
       <p id="auth-msg" class="auth-msg"></p>
     </div>
   </div>
 
   <div id="app" class="app">
-    <!-- Left rail: year switch + months -->
     <aside class="rail">
       <div class="rail-year">
         <button class="icon-btn" id="year-prev" aria-label="Previous year">‹</button>
         <span id="rail-year-label">2026</span>
         <button class="icon-btn" id="year-next" aria-label="Next year">›</button>
       </div>
-      <nav class="rail-months" id="rail-months"><!-- months injected --></nav>
+      <nav class="rail-months" id="rail-months"></nav>
       <div class="rail-foot">
         <button class="ghost-btn" id="theme-toggle" title="Toggle theme">◐ Theme</button>
         <button class="ghost-btn hidden" id="signout-btn">Sign out</button>
       </div>
     </aside>
 
-    <!-- Main: header + month grid -->
     <main class="main">
       <header class="topbar">
         <div class="topbar-title">
@@ -49,12 +69,25 @@
         </div>
       </header>
 
-      <div class="weekdays" id="weekdays"><!-- weekday labels injected --></div>
-      <div class="grid" id="grid"><!-- day cells injected --></div>
+      <div class="weekdays" id="weekdays"></div>
+      <div class="grid" id="grid"></div>
     </main>
   </div>
 
-  <!-- Event modal -->
+  <!-- Day sheet (mobile): a readable list of one day's events. -->
+  <div id="daysheet" class="sheet">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <h3 id="sheet-date">Day</h3>
+        <button class="icon-btn" id="sheet-close" aria-label="Close">✕</button>
+      </div>
+      <div id="sheet-events" class="sheet-events"></div>
+      <button class="primary-btn sheet-add" id="sheet-add">+ Add event</button>
+    </div>
+  </div>
+
+  <!-- Event editor -->
   <div id="modal" class="modal">
     <div class="modal-card">
       <div class="modal-head">
@@ -68,7 +101,7 @@
         <label>Category <span class="muted">(optional)</span><input id="event-category" type="text" placeholder="e.g. Uni, Personal" autocomplete="off" /></label>
         <div class="field">
           <span class="field-label">Color</span>
-          <div class="swatches" id="event-colors"><!-- swatches injected --></div>
+          <div class="swatches" id="event-colors"></div>
         </div>
         <label>Notes <span class="muted">(optional)</span><textarea id="event-notes" rows="3" autocomplete="off"></textarea></label>
         <label class="check-row"><input id="event-done" type="checkbox" /> Mark as done</label>
@@ -81,9 +114,7 @@
     </div>
   </div>
 
-  <!-- Supabase client (only fetched/used in Supabase mode) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Local, untracked config (Supabase URL + anon key). Falls back to demo mode if absent. -->
   <script src="config.js" onerror="window.__NO_CONFIG__=true"></script>
   <script src="store.js"></script>
   <script src="calendar.js"></script>

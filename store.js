@@ -98,9 +98,16 @@ const Store = (() => {
         const { data } = await sb.auth.getSession();
         return data.session;
       },
-      async sendMagicLink(email) {
+      // Email OTP *code* flow (not a magic link) — a 6-digit code the user types
+      // back in. Works inside an installed PWA, where email links would open a
+      // separate browser and never sign the app in.
+      async sendCode(email) {
         if (!sb) sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
-        return sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.split('#')[0] } });
+        return sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+      },
+      async verifyCode(email, token) {
+        if (!sb) sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+        return sb.auth.verifyOtp({ email, token, type: 'email' });
       },
       async signOut() { if (sb) await sb.auth.signOut(); },
       onChange(cb) { if (sb) sb.auth.onAuthStateChange((_e, s) => cb(s)); },
