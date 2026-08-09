@@ -308,7 +308,7 @@
   // One place the UI refreshes from — grid, and the day sheet if it's open.
   function refresh() { renderAll(); if ($('daysheet').classList.contains('open')) renderSheet(); }
 
-  /* ---- auth gate (supabase mode) — email → 6-digit code ---- */
+  /* ---- auth gate (supabase mode) — email + password ---- */
   async function gate() {
     if (!Store.auth.enabled) return true;         // local mode → straight in
     const session = await Store.auth.session();
@@ -316,39 +316,36 @@
 
     $('auth').classList.add('open');
     $('signout-btn').classList.remove('hidden');
-    const emailForm = $('auth-form'), codeForm = $('code-form');
-    let email = '';
 
-    emailForm.onsubmit = async (e) => {
-      e.preventDefault();
-      email = $('auth-email').value.trim();
-      const btn = $('auth-send'); btn.disabled = true;
-      $('auth-msg').textContent = 'Sending…';
-      const { error } = await Store.auth.sendCode(email);
-      btn.disabled = false;
-      if (error) { $('auth-msg').textContent = 'Error: ' + error.message; return; }
-      $('code-email').textContent = email;
-      emailForm.classList.add('hidden');
-      codeForm.classList.remove('hidden');
+    let mode = 'signin';   // 'signin' | 'signup'
+    const setMode = (m) => {
+      mode = m;
+      $('auth-submit').textContent = m === 'signin' ? 'Sign in' : 'Create account';
+      $('auth-lead').textContent = m === 'signin' ? 'Sign in to your calendar.' : 'Create your calendar account.';
+      $('auth-toggle').textContent = m === 'signin' ? 'Create an account' : 'I already have an account';
+      $('auth-pass').setAttribute('autocomplete', m === 'signin' ? 'current-password' : 'new-password');
       $('auth-msg').textContent = '';
-      setTimeout(() => $('auth-code').focus(), 60);
     };
+    $('auth-toggle').onclick = () => setMode(mode === 'signin' ? 'signup' : 'signin');
 
-    codeForm.onsubmit = async (e) => {
+    $('auth-form').onsubmit = async (e) => {
       e.preventDefault();
-      const token = $('auth-code').value.trim();
-      const btn = $('auth-verify'); btn.disabled = true;
-      $('auth-msg').textContent = 'Verifying…';
-      const { error } = await Store.auth.verifyCode(email, token);
+      const email = $('auth-email').value.trim();
+      const password = $('auth-pass').value;
+      const btn = $('auth-submit'); btn.disabled = true;
+      $('auth-msg').textContent = mode === 'signin' ? 'Signing in…' : 'Creating account…';
+      const { data, error } = mode === 'signin'
+        ? await Store.auth.signIn(email, password)
+        : await Store.auth.signUp(email, password);
       btn.disabled = false;
-      if (error) { $('auth-msg').textContent = 'That code didn’t work. Check it and try again.'; return; }
+      if (error) { $('auth-msg').textContent = error.message; return; }
+      if (mode === 'signup' && !(data && data.session)) {
+        // "Confirm email" is still on → no session yet.
+        $('auth-msg').textContent = 'Account created — turn off “Confirm email” in Supabase, then sign in.';
+        setMode('signin');
+        return;
+      }
       location.reload();   // session persisted → gate passes on reload
-    };
-
-    $('code-back').onclick = () => {
-      codeForm.classList.add('hidden');
-      emailForm.classList.remove('hidden');
-      $('auth-msg').textContent = '';
     };
 
     Store.auth.onChange(s => { if (s && s.user) location.reload(); });

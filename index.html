@@ -26,16 +26,11 @@
       <h1>My Calendar</h1>
 
       <form id="auth-form" class="auth-step">
-        <p class="auth-lead">Enter your email and we’ll send a 6-digit sign-in code.</p>
+        <p class="auth-lead" id="auth-lead">Sign in to your calendar.</p>
         <input id="auth-email" type="email" inputmode="email" placeholder="you@example.com" autocomplete="email" required />
-        <button type="submit" class="primary-btn auth-btn" id="auth-send">Send code</button>
-      </form>
-
-      <form id="code-form" class="auth-step hidden">
-        <p class="auth-lead">Enter the 6-digit code sent to <span id="code-email" class="code-email"></span>.</p>
-        <input id="auth-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" />
-        <button type="submit" class="primary-btn auth-btn" id="auth-verify">Verify &amp; sign in</button>
-        <button type="button" class="link-btn" id="code-back">Use a different email</button>
+        <input id="auth-pass" type="password" placeholder="Password" autocomplete="current-password" minlength="6" required />
+        <button type="submit" class="primary-btn auth-btn" id="auth-submit">Sign in</button>
+        <button type="button" class="link-btn" id="auth-toggle">Create an account</button>
       </form>
 
       <p id="auth-msg" class="auth-msg"></p>
