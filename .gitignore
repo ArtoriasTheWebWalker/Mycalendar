@@ -1,0 +1,6 @@
+# Never commit real Supabase creds — same rule as FPL's config.js
+config.js
+
+# Local tooling
+node_modules/
+.DS_Store

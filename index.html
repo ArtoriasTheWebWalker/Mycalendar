@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>My Calendar</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Login overlay (only shown in Supabase mode when signed out) -->
+  <div id="auth" class="auth">
+    <div class="auth-card">
+      <h1>My Calendar</h1>
+      <p class="muted">Sign in with a magic link. Enter your email and check your inbox.</p>
+      <form id="auth-form">
+        <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email" required />
+        <button type="submit">Send magic link</button>
+      </form>
+      <p id="auth-msg" class="auth-msg"></p>
+    </div>
+  </div>
+
+  <div id="app" class="app">
+    <!-- Left rail: year switch + months -->
+    <aside class="rail">
+      <div class="rail-year">
+        <button class="icon-btn" id="year-prev" aria-label="Previous year">‹</button>
+        <span id="rail-year-label">2026</span>
+        <button class="icon-btn" id="year-next" aria-label="Next year">›</button>
+      </div>
+      <nav class="rail-months" id="rail-months"><!-- months injected --></nav>
+      <div class="rail-foot">
+        <button class="ghost-btn" id="theme-toggle" title="Toggle theme">◐ Theme</button>
+        <button class="ghost-btn hidden" id="signout-btn">Sign out</button>
+      </div>
+    </aside>
+
+    <!-- Main: header + month grid -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2 id="month-title">Month</h2>
+          <span id="mode-badge" class="badge" title="Storage mode"></span>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost-btn" id="today-btn">Today</button>
+          <button class="icon-btn" id="month-prev" aria-label="Previous month">‹</button>
+          <button class="icon-btn" id="month-next" aria-label="Next month">›</button>
+        </div>
+      </header>
+
+      <div class="weekdays" id="weekdays"><!-- weekday labels injected --></div>
+      <div class="grid" id="grid"><!-- day cells injected --></div>
+    </main>
+  </div>
+
+  <!-- Event modal -->
+  <div id="modal" class="modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modal-title">New event</h3>
+        <button class="icon-btn" id="modal-close" aria-label="Close">✕</button>
+      </div>
+      <form id="event-form">
+        <input type="hidden" id="event-id" />
+        <label>Date<input id="event-date" type="date" required /></label>
+        <label>Title<input id="event-title" type="text" placeholder="e.g. SE401 final, 9am" autocomplete="off" required /></label>
+        <label>Category <span class="muted">(optional)</span><input id="event-category" type="text" placeholder="e.g. Uni, Personal" autocomplete="off" /></label>
+        <div class="field">
+          <span class="field-label">Color</span>
+          <div class="swatches" id="event-colors"><!-- swatches injected --></div>
+        </div>
+        <label>Notes <span class="muted">(optional)</span><textarea id="event-notes" rows="3" autocomplete="off"></textarea></label>
+        <label class="check-row"><input id="event-done" type="checkbox" /> Mark as done</label>
+        <div class="modal-actions">
+          <button type="button" class="danger-btn hidden" id="event-delete">Delete</button>
+          <div class="spacer"></div>
+          <button type="submit" class="primary-btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Supabase client (only fetched/used in Supabase mode) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Local, untracked config (Supabase URL + anon key). Falls back to demo mode if absent. -->
+  <script src="config.js" onerror="window.__NO_CONFIG__=true"></script>
+  <script src="store.js"></script>
+  <script src="calendar.js"></script>
+</body>
+</html>
